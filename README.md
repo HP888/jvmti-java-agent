@@ -5,8 +5,8 @@ Like basic Java Agent but more lightweight
 Currently works only on Windows.
 
 Default locations: (you can change NativeAgent.dll location in me/hp888/nativeagent/data/Settings)
-C:/agent.jar
-C:/NativeAgent.dll
+- C:/agent.jar
+- C:/NativeAgent.dll
 
 (I'm not coding in C++ every day so please don't hate me for bad code) 
 

@@ -3,6 +3,8 @@
 Agent written in c++ for Java
 Like basic Java Agent but more lightweight
 
+(I'm not coding in C++ every day so please don't hate me for bad code) 
+
 # Informations about project
 
 Project should work on Java 8 and later versions.

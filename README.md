@@ -2,12 +2,23 @@
 
 Agent written in c++ for Java
 Like basic Java Agent but more lightweight
+Currently works only on Windows.
+
+Default locations: (you can change NativeAgent.dll location in me/hp888/nativeagent/data/Settings)
+- C:/agent.jar
+- C:/NativeAgent.dll
 
 (I'm not coding in C++ every day so please don't hate me for bad code) 
 
 # Informations about project
 
 Project should work on Java 8 and later versions.
+
+# How to inject agent?
+
+Download & run ProcessHacker -> PPM on process -> Miscellaneous -> Inject DLL -> Select DLL from C:/NativeAgent.dll
+
+![alt text](https://cdn.discordapp.com/attachments/628611450331463690/643546428450406421/processhacker-inject-dll.png)
 
 # Examples
 

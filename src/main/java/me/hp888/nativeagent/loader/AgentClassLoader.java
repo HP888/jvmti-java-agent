@@ -16,7 +16,7 @@ public class AgentClassLoader extends URLClassLoader
     private final Map<String, Class<?>> classes;
 
     public AgentClassLoader(final Map<String, byte[]> classes) {
-        super(new URL[0]);
+        super(new URL[0], ClassLoader.getSystemClassLoader());
         this.classes = new ConcurrentHashMap<>();
         this.classBytes = classes;
     }

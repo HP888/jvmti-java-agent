@@ -16,14 +16,14 @@ JNIEnv* env;
 
 NativeAgent::NativeAgent() {
 	jsize count;
-	if (JNI_GetCreatedJavaVMs((JavaVM**) &jvm, 1, &count) != JNI_OK || count == 0) {
+	if (JNI_GetCreatedJavaVMs((JavaVM * *)& jvm, 1, &count) != JNI_OK || count == 0) {
 		cout << "Failed to get the JVM" << endl;
 		return;
 	}
 
-	jint res = jvm->GetEnv((void**) &env, JNI_VERSION_1_6);
+	jint res = jvm->GetEnv((void**)& env, JNI_VERSION_1_6);
 	if (res == JNI_EDETACHED) {
-		res = jvm->AttachCurrentThread((void**) &env, nullptr);
+		res = jvm->AttachCurrentThread((void**)& env, nullptr);
 	}
 
 	if (res != JNI_OK) {
@@ -31,7 +31,7 @@ NativeAgent::NativeAgent() {
 		return;
 	}
 
-	res = jvm->GetEnv((void**) &jvmti, JVMTI_VERSION_1_0);
+	res = jvm->GetEnv((void**)& jvmti, JVMTI_VERSION_1_0);
 	if (res != JNI_OK) {
 		cerr << "Failed to get JVMTI env!" << endl;
 		return;
@@ -52,7 +52,7 @@ static string* names = NULL;
 
 jbyteArray asByteArray(JNIEnv* env, const unsigned char* buf, int len) {
 	jbyteArray array = env->NewByteArray(len);
-	env->SetByteArrayRegion(array, 0, len, (const jbyte*) buf);
+	env->SetByteArrayRegion(array, 0, len, (const jbyte*)buf);
 	return array;
 }
 
@@ -93,7 +93,12 @@ void JNICALL classTransformerHook(jvmtiEnv* jvmti, JNIEnv* env, jclass class_bei
 		*new_data_len = data_len;
 		memcpy(*new_data, data, data_len);
 	} else {
-		if (strcmp(name, names[index].c_str())) {
+		const jclass stringCls = env->FindClass("java/lang/String");
+		const jmethodID startsWith = env->GetMethodID(stringCls, "startsWith", "(Ljava/lang/String;)Z");
+		const jstring javaClassName = env->NewStringUTF(name),
+			javaIndexName = env->NewStringUTF(names[index].c_str());
+
+		if (!env->CallBooleanMethod(javaIndexName, startsWith, javaClassName)) {
 			jvmti->Allocate(data_len, new_data);
 			*new_data_len = data_len;
 			memcpy(*new_data, data, data_len);
@@ -108,7 +113,7 @@ void JNICALL classTransformerHook(jvmtiEnv* jvmti, JNIEnv* env, jclass class_bei
 		const jclass arrayCls = env->FindClass("java/lang/reflect/Array");
 		const jclass object = env->FindClass("java/lang/Object");
 		const jmethodID newInstance = env->GetStaticMethodID(arrayCls, "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;");
-		const jobjectArray newArray = (jobjectArray)env->CallStaticObjectMethod(arrayCls, newInstance, object, (jint) 5);
+		const jobjectArray newArray = (jobjectArray)env->CallStaticObjectMethod(arrayCls, newInstance, object, (jint)5);
 		const jbyteArray plainBytes = asByteArray(env, *new_data, *new_data_len);
 		const jbyteArray byteArray = env->NewByteArray(0);
 		env->SetObjectArrayElement(newArray, 0, loader);
@@ -117,9 +122,9 @@ void JNICALL classTransformerHook(jvmtiEnv* jvmti, JNIEnv* env, jclass class_bei
 		env->SetObjectArrayElement(newArray, 3, protection_domain);
 		env->SetObjectArrayElement(newArray, 4, plainBytes);
 
-		const jbyteArray newByteArray = (jbyteArray) env->CallStaticObjectMethod(reflections, invokeMethod, method, NULL, newArray);
+		const jbyteArray newByteArray = (jbyteArray)env->CallStaticObjectMethod(reflections, invokeMethod, method, NULL, newArray);
 		unsigned char* newChars = asUnsignedCharArray(env, newByteArray);
-		const jint newLength = (jint) env->GetArrayLength(newByteArray);
+		const jint newLength = (jint)env->GetArrayLength(newByteArray);
 
 		jvmti->Allocate(newLength, new_data);
 		*new_data_len = newLength;
@@ -175,11 +180,11 @@ jbyteArray toByteArray(JNIEnv* env, jobject inputStream) {
 	jlong count;
 	jint read;
 	for (count = 0; (read = env->CallIntMethod(inputStream, readMethod, buffer)) != -1; count += read) {
-		env->CallVoidMethod(byteArrayOutputStream, writeMethod, buffer, (jint) 0, read);
+		env->CallVoidMethod(byteArrayOutputStream, writeMethod, buffer, (jint)0, read);
 	}
 
-	const jbyteArray bytes = (jbyteArray) env->CallObjectMethod(byteArrayOutputStream, toByteArray);
-	return (jbyteArray) env->CallObjectMethod(byteArrayOutputStream, toByteArray);
+	const jbyteArray bytes = (jbyteArray)env->CallObjectMethod(byteArrayOutputStream, toByteArray);
+	return (jbyteArray)env->CallObjectMethod(byteArrayOutputStream, toByteArray);
 }
 
 jobject addClassesToMap(JNIEnv* env, jstring agentPath) {
@@ -224,9 +229,9 @@ jobject addClassesToMap(JNIEnv* env, jstring agentPath) {
 
 	jobject entry = NULL;
 	while ((entry = env->CallObjectMethod(zipInputStreamInstance, getNextEntry)) != NULL) {
-		const jstring name = (jstring) env->CallObjectMethod(entry, getName);
+		const jstring name = (jstring)env->CallObjectMethod(entry, getName);
 		if (!env->CallBooleanMethod(entry, isDirectory) && env->CallBooleanMethod(name, contains, dotString) && !env->CallBooleanMethod(name, startsWith, spaceString) && env->CallBooleanMethod(name, contains, classString)) {
-			env->CallVoidMethod(classes, put, (jstring) env->CallObjectMethod(env->CallObjectMethod(name, stringReplace, slashString, dotString), stringReplace, classString, emptyString), toByteArray(env, zipInputStreamInstance)); //env->CallStaticObjectMethod(NULL, toByteArray, zipInputStreamInstance));
+			env->CallVoidMethod(classes, put, (jstring)env->CallObjectMethod(env->CallObjectMethod(name, stringReplace, slashString, dotString), stringReplace, classString, emptyString), toByteArray(env, zipInputStreamInstance)); //env->CallStaticObjectMethod(NULL, toByteArray, zipInputStreamInstance));
 			if (env->ExceptionOccurred()) {
 				cout << "Exception thrown when loading agent's classes [zip]" << endl;
 				env->ExceptionDescribe();
@@ -291,7 +296,7 @@ void NativeAgent::onAttach(NativeAgent* agent) {
 
 	const jobject classMap = addClassesToMap(env, path);
 
-	const jobjectArray classNames = (jobjectArray) env->CallObjectMethod(env->CallObjectMethod(classMap, keySet), toArray, env->NewObjectArray(0, stringCls, NULL));
+	const jobjectArray classNames = (jobjectArray)env->CallObjectMethod(env->CallObjectMethod(classMap, keySet), toArray, env->NewObjectArray(0, stringCls, NULL));
 	const jsize classNamesLength = env->GetArrayLength(classNames);
 
 	for (int i = 0; i < classNamesLength; i++) {
@@ -318,11 +323,11 @@ void NativeAgent::onAttach(NativeAgent* agent) {
 
 	const jobject systemClassLoaderField = env->CallObjectMethod(loaderClass, getDeclaredField, env->NewStringUTF("scl"));
 	env->CallVoidMethod(systemClassLoaderField, setAccessible, (jboolean)JNI_TRUE);
-	env->CallVoidMethod(systemClassLoaderField, set, (jobject) NULL, agentClassLoaderInstance);
+	env->CallVoidMethod(systemClassLoaderField, set, (jobject)NULL, agentClassLoaderInstance);
 	cout << "[Agent] Changed application's class loader!" << endl;
 
 	const jmethodID loadClass = env->GetMethodID(agentClassLoader, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
-	nativeAccesses = (jclass) env->CallObjectMethod(agentClassLoaderInstance, loadClass, env->NewStringUTF("me.hp888.nativeagent.NativeAccesses"));
+	nativeAccesses = (jclass)env->CallObjectMethod(agentClassLoaderInstance, loadClass, env->NewStringUTF("me.hp888.nativeagent.NativeAccesses"));
 
 	reflections = (jclass)env->CallObjectMethod(agentClassLoaderInstance, loadClass, env->NewStringUTF("me.hp888.nativeagent.utils.Reflections"));
 	getMethod = env->GetStaticMethodID(reflections, "getMethod", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/reflect/Method;");
@@ -338,7 +343,7 @@ void NativeAgent::onAttach(NativeAgent* agent) {
 
 	// uruchamianie agenta
 
-	const jclass instrumentationImpl = (jclass) env->CallObjectMethod(agentClassLoaderInstance, loadClass, env->NewStringUTF("me.hp888.nativeagent.instrument.impl.InstrumentationImpl")); // Instrumentacja
+	const jclass instrumentationImpl = (jclass)env->CallObjectMethod(agentClassLoaderInstance, loadClass, env->NewStringUTF("me.hp888.nativeagent.instrument.impl.InstrumentationImpl")); // Instrumentacja
 	const jmethodID instrumentationImplConstructor = env->GetMethodID(instrumentationImpl, "<init>", "()V");
 	const jobject instrumentationInstance = env->NewObject(instrumentationImpl, instrumentationImplConstructor);
 
@@ -363,7 +368,7 @@ jobjectArray asClassArray(JNIEnv* env, jclass* buf, int len) {
 	for (int i = 0; i < len; i++) {
 		env->SetObjectArrayElement(array, i, buf[i]);
 	}
-	
+
 	return array;
 }
 
@@ -407,8 +412,8 @@ JNIEXPORT void JNICALL Java_me_hp888_nativeagent_instrument_impl_Instrumentation
 	names = new string[size];
 
 	for (int index = 0; index < size; index++) {
-		jvmClasses[index] = (jclass) env->GetObjectArrayElement(classes, index);
-		names[index] = env->GetStringUTFChars((jstring) env->CallObjectMethod((jstring) env->CallObjectMethod(jvmClasses[index], getName), stringReplace, dotString, slashString), JNI_FALSE);
+		jvmClasses[index] = (jclass)env->GetObjectArrayElement(classes, index);
+		names[index] = env->GetStringUTFChars((jstring)env->CallObjectMethod((jstring)env->CallObjectMethod(jvmClasses[index], getName), stringReplace, dotString, slashString), JNI_FALSE);
 	}
 
 	cout << "[Agent] Retransforming " << size << " classes.." << endl;
